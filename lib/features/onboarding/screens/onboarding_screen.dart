@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/widgets/buttons/primary_button.dart';
+import '../../../core/widgets/fields/custom_text_form_field.dart';
 import 'onboard_screen_view_model.dart';
 
 class OnboardingScreen extends StatelessWidget {
@@ -27,6 +29,8 @@ class OnboardingScreen extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             children: const <Widget>[
               _StepOne(),
+              _StepTwo(),
+              _StepThree(),
             ],
           ),
         );
@@ -68,127 +72,15 @@ class _StepHeader extends StatelessWidget {
             value: step / total,
             minHeight: 6,
             backgroundColor: cs.surfaceContainerHigh,
-            valueColor: AlwaysStoppedAnimation(cs.primary),
+            valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
           ),
         ),
       ],
     );
   }}
 
-class _PrimaryButton extends StatelessWidget {
- 
-  const _PrimaryButton({
-    required this.label,
-    required this.onTap,
-    this.icon,
-    this.isLoading = false,
-  });
-  final String label;
-  final IconData? icon;
-  final bool isLoading;
-  final VoidCallback? onTap;
- 
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: cs.primary,
-          foregroundColor: cs.onPrimary,
-          disabledBackgroundColor: cs.primary.withValues(alpha: 0.6),
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
-          elevation: 4,
-          shadowColor: cs.primary.withValues(alpha: 0.3),
-        ),
-        child: isLoading
-            ? SizedBox(
-                height: 22,
-                width: 22,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2.5, color: cs.onPrimary),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onPrimary),
-                  ),
-                  if (icon != null) ...<Widget>[
-                    const SizedBox(width: 8),
-                    Icon(icon, size: 22, color: cs.onPrimary),
-                  ],
-                ],
-              ),
-      ),
-    );
-  }
-}
- 
-class _InputField extends StatelessWidget {
- 
-  const _InputField({
-    required this.controller,
-    required this.hint,
-    required this.icon,
-    this.maxLines = 1,
-    this.errorText,
-  });
-  final TextEditingController controller;
-  final String hint;
-  final IconData icon;
-  final int maxLines;
-  final String? errorText;
- 
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      style: Theme.of(context).textTheme.bodyLarge,
-      decoration: InputDecoration(
-        hintText: hint,
-        errorText: errorText,
-        prefixIcon: Padding(
-          padding: EdgeInsets.only(
-              left: 12, right: 8, top: maxLines > 1 ? 14 : 0),
-          child: Icon(icon, color: cs.outline, size: 22),
-        ),
-        prefixIconConstraints:
-            const BoxConstraints(),
-      ),
-    );
-  }
-}
-
-class _StepOne extends StatefulWidget {
+class _StepOne extends StatelessWidget {
   const _StepOne();
-
-  @override
-  State<_StepOne> createState() => _StepOneState();
-}
-
-class _StepOneState extends State<_StepOne> {
-  bool _showError = false;
-
-  void _onContinue(OnboardScreenViewModel vm) {
-    if (!vm.isStep1Valid) {
-      setState(() => _showError = true);
-      return;
-    }
-
-    setState(() => _showError = false);
-    vm.nextStep();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -224,8 +116,8 @@ class _StepOneState extends State<_StepOne> {
                     width: double.infinity,
                     height: 160,
                     color: const Color(0xFF1A2E1A),
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800',
+                    child: Image.asset(
+                      'assets/images/step_1_banner.png',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         color: cs.surfaceContainer,
@@ -296,13 +188,19 @@ class _StepOneState extends State<_StepOne> {
                           .displaySmall
                           ?.copyWith(color: cs.primary)),
                   const SizedBox(height: 10),
-                  _InputField(
+                  CustomTextFormField(
                     controller: vm.nameController,
-                    hint: 'E.g. Alex',
-                    icon: Icons.person_outline,
-                    errorText: _showError && vm.name.isEmpty
+                    onChanged: vm.onNameChanged,
+                    hint: 'E.g. Jhon Doe',
+                    prefix: Padding(
+                      padding: const EdgeInsets.only(left: 12, right: 8),
+                      child: Icon(Icons.person_outline,
+                          color: cs.outline, size: 22),
+                    ),
+                    validator: (_) => vm.showNameError
                         ? 'Please enter your name'
                         : null,
+                    textStyle: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 20),
                   Text('And your big dream?',
@@ -311,14 +209,22 @@ class _StepOneState extends State<_StepOne> {
                           .displaySmall
                           ?.copyWith(color: cs.primary)),
                   const SizedBox(height: 10),
-                  _InputField(
+                  CustomTextFormField(
                     controller: vm.dreamController,
+                    onChanged: vm.onDreamChanged,
                     hint: 'Write down your main goal...',
-                    icon: Icons.auto_awesome_outlined,
+                    prefix: Padding(
+                      padding: const EdgeInsets.only(
+                          left: 12, right: 8, bottom: 42),
+                      child: Icon(Icons.auto_awesome_outlined,
+                          color: cs.outline, size: 22),
+                    ),
+                    minLines: 3,
                     maxLines: 3,
-                    errorText: _showError && vm.dream.isEmpty
+                    validator: (_) => vm.showDreamError
                         ? 'Please write your dream'
                         : null,
+                    textStyle: Theme.of(context).textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 20),
  
@@ -358,12 +264,10 @@ class _StepOneState extends State<_StepOne> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _PrimaryButton(
+                  PrimaryButton(
                       label: 'Continue',
                       icon: Icons.arrow_forward,
-                      onTap: () {
-                        _onContinue(vm);
-                      },
+                      onTap: vm.canContinue ? vm.continueFromStep1 : null,
                 ),
                 const SizedBox(height: 16),
                   Center(
@@ -386,5 +290,694 @@ class _StepOneState extends State<_StepOne> {
     );
       },
     ); 
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  STEP 2 — Who are you doing this for?
+// ─────────────────────────────────────────────────────────────────
+ 
+class _StepTwo extends StatelessWidget {
+  const _StepTwo();
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return Consumer<OnboardScreenViewModel>(
+      builder: (_, OnboardScreenViewModel vm, __) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              children: <Widget>[
+                const 
+                _StepHeader(step: 2, total: 3),
+                const SizedBox(height: 32,),
+                Text(
+                  'Who are you doing\nthis for?',
+                  style: Theme.of(context)
+                    .textTheme
+                    .headlineLarge
+                    ?.copyWith(color: cs.onSurface),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10,),
+                Text(
+                  'This becomes your anchor - the reason\nyou keep going.',
+                  style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28,),
+
+                // Card
+                Container(
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: cs.outlineVariant),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 20,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      // Photo Picker
+                      GestureDetector(
+                        onTap: () => vm.pickAnchorImage(),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: double.infinity,
+                          height: 160,
+                          decoration: BoxDecoration(
+                            color: cs.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: vm.anchorImage != null
+                                ? cs.primary
+                                : cs.outlineVariant,
+                              width: vm.anchorImage != null ? 2 : 1,
+                            ),
+                            image: vm.anchorImage != null 
+                              ? DecorationImage(
+                                image: FileImage(vm.anchorImage!),
+                                fit: BoxFit.cover,
+                              )
+                              : null,
+                          ),
+                          child: vm.anchorImage == null
+                            ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                Container(
+                                  width: 48, height: 48,
+                                  decoration: BoxDecoration(
+                                    color: cs.primary.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.add_a_photo_outlined, color: cs.primary, size: 26,),
+                                ),
+                                const SizedBox(height: 10,),
+                                Text('Add an Anchor Image (Optional)',
+                                  style: Theme.of(context)
+                                    .textTheme
+                                    .labelMedium
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                                  ),
+                              ],
+                            ) : Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cs.primary,
+                                  borderRadius: BorderRadius.circular(99)
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    const Icon(
+                                      Icons.check_circle_outline,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 6,),
+                                    Text('Anchor Set',
+                                      style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: Colors.white
+                                        ),
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ),
+                      ),
+                      const SizedBox(height: 20,),
+                      Text('Write your anchor',
+                        style: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                      const SizedBox(height: 8,),
+                      CustomTextFormField(
+                        controller: vm.anchorController,
+                        onChanged: vm.onAnchorChanged,
+                        minLines: 4,
+                        maxLines: 4,
+                        textStyle: Theme.of(context).textTheme.bodyMedium,
+                        hint: "e.g. For my daughter's future...",
+                        validator: (_) => vm.showAnchorError
+                          ? 'Please write your anchor'
+                          : null,
+                      )
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24,),
+
+                // Rooting pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: cs.secondaryContainer.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.eco, size: 14, color: cs.primary,),
+                      const SizedBox(width: 6,),
+                      Text('ROOTING YOUR PURPOSE',
+                      style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(color: cs.primary, letterSpacing: 0.08),),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24,),
+                PrimaryButton(
+                  label: 'Continue',
+                  icon: Icons.arrow_forward,
+                  onTap: vm.canContinueStep2 ? vm.continueFromStep2 : null,
+                ),
+                const SizedBox(height: 14,),
+                TextButton(
+                  onPressed: () => vm.nextStep(),
+                  child: Text('Skip for now', 
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    decoration: TextDecoration.underline,
+                    decorationColor: cs.primary.withValues(alpha: 0.3),
+                  ),),
+                )
+              ],
+            ),
+          )
+        );
+      },
+    );
+  }
+
+}
+
+
+// ─────────────────────────────────────────────────────────────────
+//  STEP 3 — When will you grow? (Reminder time)
+// ─────────────────────────────────────────────────────────────────
+ 
+class _StepThree extends StatelessWidget {
+  const _StepThree();
+ 
+  Future<void> _onStart(BuildContext context) async {
+    final OnboardScreenViewModel vm = context.read<OnboardScreenViewModel>();
+    final bool success = await vm.completeOnboarding();
+    if (!context.mounted) {
+      return;
+    }
+    if (success) {
+      context.go('/dashboard');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Something went wrong. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+ 
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+ 
+    return Consumer<OnboardScreenViewModel>(
+      builder: (_, OnboardScreenViewModel vm, __) {
+        final int splitIndex = vm.notifBody.indexOf(vm.highlighted);
+        final String before = splitIndex >= 0 ? vm.notifBody.substring(0, splitIndex) : vm.notifBody;
+        final String after = splitIndex >= 0 ? vm.notifBody.substring(splitIndex + vm.highlighted.length) : '';
+
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              children: <Widget>[
+                // Step + 100%
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Text('STEP 3 OF 3',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w700)),
+                    Text('100%',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(
+                                color:
+                                    cs.onSurfaceVariant.withValues(alpha: 0.6))),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: 1.0,
+                    minHeight: 6,
+                    backgroundColor: cs.surfaceContainerHigh,
+                    valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                  ),
+                ),
+                const SizedBox(height: 28),
+    
+                Text('When will you grow?',
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineLarge
+                        ?.copyWith(fontSize: 28),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 10),
+                Text('Consistency is the soil where\ncharacter takes root.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+    
+                // Time picker card
+                Container(
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: cs.outlineVariant),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: <Widget>[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _DrumPicker(
+                            value: vm.reminderHour,
+                            min: 1, max: 12,
+                            onChanged: (int h) => vm.setReminderHour(h),
+                          ),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(':',
+                                style: GoogleFonts.inter(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w600,
+                                    color: cs.primary)),
+                          ),
+                          _DrumPicker(
+                            value: vm.reminderMinute,
+                            min: 0, max: 59,
+                            onChanged: (int m) => vm.setReminderMinute(m),
+                            pad: true,
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                            children: <Widget>[
+                              _AmPmButton(
+                                label: 'AM',
+                                selected: vm.isAm,
+                                onTap: () => vm.setAmPm(true),
+                              ),
+                              const SizedBox(height: 6),
+                              _AmPmButton(
+                                label: 'PM',
+                                selected: !vm.isAm,
+                                onTap: () => vm.setAmPm(false),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
+                      const SizedBox(height: 8),
+                      Text(
+                          "We'll nudge you here, every single day",
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: cs.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+    
+                // Notification preview
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.2)),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4)),
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Icon(Icons.notifications_outlined,
+                            color: cs.primary, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text('DAILY THRYVE REMINDER',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 0.6)),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                    vm.formattedTime,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                            color: cs.onSurfaceVariant
+                                                .withValues(alpha: 0.6),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            
+                            // Notification title
+                            Text(
+                              vm.notifTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w700,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+
+                            // Notification body with highlighted anchor in green
+                            RichText(
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                style:
+                                    Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                                children: <InlineSpan>[
+                                  TextSpan(text: before,),
+                                  TextSpan(
+                                    text: vm.highlighted,
+                                    style: TextStyle(
+                                        color: cs.primary,
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                  if (after.isNotEmpty) TextSpan(text: after),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text('Preview of your daily motivation',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                          fontStyle: FontStyle.italic,
+                        )),
+                const SizedBox(height: 20),
+    
+                PrimaryButton(
+                  label: 'Start Thriving',
+                  icon: Icons.arrow_forward,
+                  isLoading: vm.isSaving,
+                  onTap: () => _onStart(context),
+                ),
+                const SizedBox(height: 14),
+                TextButton(
+                  onPressed: vm.isSaving ? null : () => _onStart(context),
+                  child: Text("I'll set this later",
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w500,
+                          )),
+                ),
+                const SizedBox(height: 24),
+    
+                // Footer quote
+                Column(
+                  children: <Widget>[
+                    Container(
+                        width: 1,
+                        height: 48,
+                        color: cs.primary.withValues(alpha: 0.2)),
+                    const SizedBox(height: 12),
+                    Text(
+                      '"The best time to plant a tree was 20 years ago. The second best time is now."',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            fontSize: 13,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    ); 
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────
+//  DRUM PICKER
+// ─────────────────────────────────────────────────────────────────
+ 
+class _DrumPicker extends StatefulWidget {
+ 
+  const _DrumPicker({
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.pad = false,
+  });
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+  final bool pad;
+
+  @override
+  State<_DrumPicker> createState() => _DrumPickerState();
+}
+
+class _DrumPickerState extends State<_DrumPicker> {
+  static const double _itemExtent = 46;
+  static const Duration _animDuration = Duration(milliseconds: 250);
+
+  late final FixedExtentScrollController _controller;
+
+  int get _count => widget.max - widget.min + 1;
+
+  /// Wraps a raw (possibly negative or overflowing) wheel index into range.
+  int _normalize(int rawIndex) => ((rawIndex % _count) + _count) % _count;
+
+  String _fmt(int v) =>
+      widget.pad ? v.toString().padLeft(2, '0') : v.toString();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        FixedExtentScrollController(initialItem: widget.value - widget.min);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DrumPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only react to changes coming from outside the wheel.
+    if (widget.value == oldWidget.value || !_controller.hasClients) {
+      return;
+    }
+    final int current = _normalize(_controller.selectedItem);
+    final int target = widget.value - widget.min;
+    if (current == target) {
+      return;
+    }
+    // Take the shortest path around the loop.
+    int delta = target - current;
+    if (delta > _count ~/ 2) {
+      delta -= _count;
+    } else if (delta < -(_count ~/ 2)) {
+      delta += _count;
+    }
+    _controller.animateToItem(
+      _controller.selectedItem + delta,
+      duration: _animDuration,
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 64,
+      height: _itemExtent * 3,
+      child: ListWheelScrollView.useDelegate(
+        controller: _controller,
+        itemExtent: _itemExtent,
+        diameterRatio: 1.4,
+        perspective: 0.004,
+        physics: const FixedExtentScrollPhysics(),
+        onSelectedItemChanged: (int index) =>
+            widget.onChanged(widget.min + _normalize(index)),
+        childDelegate: ListWheelChildBuilderDelegate(
+          builder: (BuildContext context, int index) {
+            final int slot = _normalize(index);
+            final bool isSelected = slot == widget.value - widget.min;
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _controller.animateToItem(
+                index,
+                duration: _animDuration,
+                curve: Curves.easeOut,
+              ),
+              child: Center(
+                child: AnimatedDefaultTextStyle(
+                  duration: _animDuration,
+                  curve: Curves.easeOut,
+                  style: GoogleFonts.inter(
+                    fontSize: isSelected ? 40 : 28,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? cs.primary
+                        : cs.onSurface.withValues(alpha: 0.2),
+                  ),
+                  child: Text(_fmt(widget.min + slot)),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+ 
+// ─────────────────────────────────────────────────────────────────
+//  AM/PM TOGGLE
+// ─────────────────────────────────────────────────────────────────
+ 
+class _AmPmButton extends StatelessWidget {
+ 
+  const _AmPmButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+ 
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? cs.primaryContainer.withValues(alpha: 0.25)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.4)
+                : cs.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+        child: Text(label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: selected
+                      ? cs.primary
+                      : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w700,
+                )),
+      ),
+    );
   }
 }

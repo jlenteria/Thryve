@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
@@ -144,6 +145,14 @@ AppBarTheme _appBarTheme(Brightness brightness) => AppBarTheme(
   elevation: 0,
   scrolledUnderElevation: 0,
   centerTitle: false,
+  // Without this, Flutter estimates brightness from the transparent
+  // background (luminance 0 => "dark") and forces white status bar icons.
+  systemOverlayStyle: SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness:
+        brightness == Brightness.light ? Brightness.dark : Brightness.light,
+    statusBarBrightness: brightness,
+  ),
   iconTheme: IconThemeData(
     color: brightness == Brightness.light
         ? ThryvColors.onSurface
