@@ -1,72 +1,39 @@
-import 'package:flutter/scheduler.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../data/datasources/local/shared_pref_keys.dart';
+import '../constants/app_constants.dart';
 
-class ThemeManager with ChangeNotifier, WidgetsBindingObserver {
+/// Persists the user's appearance choice. Platform brightness changes are
+/// handled by [MaterialApp] itself when [themeMode] is [ThemeMode.system].
+class ThemeManager extends ChangeNotifier {
   ThemeManager() {
-    init();
+    _restore();
   }
 
-  Brightness get brightness =>
-      SchedulerBinding.instance.platformDispatcher.platformBrightness;
-  Key _key = UniqueKey();
-  Key get key => _key;
+  ThemeMode _themeMode = ThemeMode.light;
 
-  bool _isDarkMode = false;
-  bool get isDarkMode => _isDarkMode;
+  ThemeMode get themeMode => _themeMode;
 
-  bool _isSystemTheme = false;
-  ThemeType? _currentTheme = ThemeType.light;
-
-  ThemeType? get currentTheme => _currentTheme;
-
-  Future<void> init() async {
-    WidgetsBinding.instance.addObserver(this);
-    final SharedPreferences sharedPreferences =
-        await SharedPreferences.getInstance();
-
-    final String? themeName = sharedPreferences.getString(
-      SharedPrefKeys.currentTheme,
+  Future<void> _restore() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? stored = prefs.getString(AppConstants.themeKey);
+    final ThemeMode restored = ThemeMode.values.firstWhere(
+      (ThemeMode mode) => mode.name == stored,
+      orElse: () => ThemeMode.light,
     );
-
-    _isSystemTheme = themeName == ThemeType.system.name;
-    _isDarkMode =
-        (_isSystemTheme && brightness == Brightness.dark) ||
-        themeName == ThemeType.dark.name;
-    _currentTheme = ThemeType.values.firstWhere(
-      (ThemeType theme) => theme.name == themeName,
-      orElse: () => ThemeType.light,
-    );
-    notifyListeners();
+    if (restored != _themeMode) {
+      _themeMode = restored;
+      notifyListeners();
+    }
   }
 
-  Future<void> applyTheme(ThemeType type) async {
-    if (type == _currentTheme) {
+  Future<void> setThemeMode(ThemeMode mode) async {
+    if (mode == _themeMode) {
       return;
     }
-    final SharedPreferences sharedPreferences =
-        await SharedPreferences.getInstance();
-
-    await sharedPreferences.setString(SharedPrefKeys.currentTheme, type.name);
-    _key = UniqueKey();
-    _currentTheme = type;
-    _isSystemTheme = currentTheme == ThemeType.system;
-    _isDarkMode =
-        (_isSystemTheme && brightness == Brightness.dark) ||
-        currentTheme == ThemeType.dark;
+    _themeMode = mode;
     notifyListeners();
-  }
-
-  @override
-  void didChangePlatformBrightness() {
-    if (_isSystemTheme) {
-      _isDarkMode = brightness == Brightness.dark;
-    }
-    notifyListeners();
-    super.didChangePlatformBrightness();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(AppConstants.themeKey, mode.name);
   }
 }
-
-enum ThemeType { light, dark, system }
